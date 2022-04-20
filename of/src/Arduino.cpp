@@ -29,7 +29,7 @@ void Arduino::update()
     if( bSendSerialMessage ) {
 
         // (1) write the letter "a" to serial:
-        serial.writeByte( 'a' );
+        ( sendPostiveAnimation ) ? serial.writeByte( 'p' ) : serial.writeByte( 'n' );
         serial.writeByte( '\n' );
 
         // (2) read
@@ -59,6 +59,12 @@ void Arduino::update()
         bSendSerialMessage = false;
         readTime = ofGetElapsedTimef();
     }
+
+    if( sendStopAnimation ) {
+        serial.writeByte( 's' );
+        serial.writeByte( '\n' );
+        sendStopAnimation = false;
+    }
 }
 
 void Arduino::drawDebug()
@@ -70,15 +76,26 @@ void Arduino::drawDebug()
         ofSetColor( 220 );
     }
     string msg;
-    msg += "click to test serial:\n";
+    msg += "serial data:\n";
     msg += "nBytes read " + ofToString( nBytesRead ) + "\n";
     msg += "nTimes read " + ofToString( nTimesRead ) + "\n";
     msg += "read: " + ofToString( bytesReadString ) + "\n";
     msg += "(at time " + ofToString( readTime, 3 ) + ")";
-    ofDrawBitmapString(msg, 50, 100 );
+    ofDrawBitmapString( msg, 50, 100 );
 }
 
-void Arduino::sendSerialMsg()
+void Arduino::sendSerialMsg( float pos, float neg )
 {
-    bSendSerialMessage = true; 
+    if( pos > neg )
+        sendPostiveAnimation = true;
+    else if( neg > pos )
+        sendPostiveAnimation = false;
+
+    ofLogNotice() << "Send positive animation: " << sendPostiveAnimation;
+    bSendSerialMessage = true;
+}
+
+void Arduino::sendStopMsg()
+{
+    sendStopAnimation = true;
 }

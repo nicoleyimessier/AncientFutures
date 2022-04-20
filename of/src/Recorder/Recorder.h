@@ -21,7 +21,8 @@ class Recorder {
     string getVisitorPath() { return mVisitorPath; }
     bool   getAudioEnabled() { return mAudio; }
     bool   getIsRecordingVideo();
-    bool   getIsDoneProcessing(); 
+    bool   getIsDoneProcessing();
+    string getSentimentPath() { return mVisitorSentimentPath; }
 
     //! setters
     void setAudioEnabled( bool enable ) { mAudio = enable; }
@@ -47,7 +48,8 @@ class Recorder {
 
     //! Paths
     string mRootPath{
-        "C:\\Users\\nicol\\Documents\\code\\openFrameworks\\of_v0.11.2_vs2017_release\\of_v0.11.2_vs2017_release\\apps\\myApps\\AncientFuturesApp\\bin\\"
+        "C:\\Users\\nicol\\Documents\\code\\openFrameworks\\of_v0.11.2_vs2017_release\\of_v0.11.2_vs2017_"
+        "release\\apps\\myApps\\AncientFuturesApp\\bin\\"
     };
     string mRecordingPath{ "" };
     string mVisitorPath{ "" };
@@ -57,7 +59,7 @@ class Recorder {
     //! audio
     ofSoundStream soundStream;
     short *       shortBuffer;
-    ofPolyline    waveform;
+    vector<float> inputFrames;
     size_t        lastAudioTimeReset;
     int           bufferCounter;
     int           audioCounter;
@@ -78,5 +80,6 @@ class Recorder {
     void   performSentimentAnalysis();
     string translation{ "" };
     string sentimentAnalysis{ "" };
-    
+
+    ofTrueTypeFont font;
 };

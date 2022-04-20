@@ -11,7 +11,8 @@ class Arduino {
     void drawDebug();
 
     // Communcations
-    void sendSerialMsg();
+    void sendSerialMsg( float pos, float neg );
+    void sendStopMsg(); 
 
   private:
     bool  bSendSerialMessage{ false }; // a flag for sending serial
@@ -22,4 +23,8 @@ class Arduino {
     float readTime{ 0.0f };
 
     ofSerial serial;
+
+    // NEED TO DO: make into enum state machine
+    bool sendPostiveAnimation{ false };
+    bool sendStopAnimation{ true };
 };

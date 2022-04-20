@@ -28,4 +28,8 @@ class AppManager {
 
     // Arduino + Serial Comms
     Arduino arduino;
+
+    // Animation timer
+    float startAnimationTime{ 0.0f };
+    float animationTime{ 10.0f };
 };

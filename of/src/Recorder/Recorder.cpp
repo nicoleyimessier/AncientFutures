@@ -46,6 +46,12 @@ void Recorder::setup( string recordingPath )
         ofDirectory::createDirectory( path, true );
 
     mRecordingPath = path + "\\";
+
+    // Setup audio buffer
+    int bufferSize = 1024;
+    inputFrames.assign( bufferSize, 0.0 );
+
+    font.load( "DIN.otf", 20 );
 }
 
 
@@ -61,7 +67,7 @@ void Recorder::setupSoundBuffer()
 
     auto devices = soundStream.getDeviceList( ofSoundDevice::Api::MS_DS );
     if( !devices.empty() ) {
-        settings.setInDevice( devices[3] );
+        settings.setInDevice( devices[5] );
     }
 
     settings.setApi( ofSoundDevice::Api::MS_DS );
@@ -87,7 +93,6 @@ void Recorder::draw( int x, int y, float width, float height )
 void Recorder::drawDebug()
 {
     ofSetColor( 255, 255, 220 );
-    waveform.draw();
 
     if( mRecorderAud.isRecording() ) {
         ofDrawBitmapStringHighlight( "audio duration: " + std::to_string( mRecorderAud.getRecordedAudioDuration( 30.0f ) ), 40, 70 );
@@ -103,12 +108,39 @@ void Recorder::drawDebug()
         else {
             ofSetColor( ofColor::green );
         }
-        ofDrawCircle( ofPoint( 10, 70 ), 10 );
+        ofDrawCircle( ofPoint( 50, 70 ), 10 );
+            
 
+        ofSetColor(255); 
 
         // Draw the information
-        ofDrawBitmapStringHighlight( "Press 'r' to start recording and 's' to stop recording.", 10, ofGetHeight() - 200 );
+        string msg = "Press 'r' to start recording and 's' to stop recording.\n";
+        msg += "translation: " + translation + "\n";
+        msg += "sentiment: " + sentimentAnalysis + "\n";
+        font.drawString( msg, 10, ofGetHeight() - 200 );
+        // ofDrawBitmapStringHighlight( msg, 10, ofGetHeight() - 200 );
     }
+    ofPopStyle();
+
+
+    // Draw audio
+    ofPushStyle();
+    ofPushMatrix();
+    ofTranslate( 32, ofGetHeight() / 2, 0 );
+
+    ofNoFill();
+    ofSetColor( 167, 112, 158 );
+
+    ofSetLineWidth( 5 );
+    ofBeginShape();
+    for( unsigned int i = 0; i < inputFrames.size(); i++ ) {
+        float y = 100 - inputFrames[i] * 180.0f;
+        ofVertex( i, y );
+        // ofVertex(i*2, 100);
+    }
+    ofEndShape( false );
+
+    ofPopMatrix();
     ofPopStyle();
 }
 
@@ -155,14 +187,18 @@ void Recorder::audioIn( ofSoundBuffer &input )
         break;
     }
 
-
-    waveform.clear();
     for( size_t i = 0; i < input.getNumFrames(); i++ ) {
         float sample = input.getSample( i, 0 );
-        float x = ofMap( i, 0, input.getNumFrames(), 0, ofGetWidth() );
-        float y = ofMap( sample, -1, 1, 0, ofGetHeight() );
-        waveform.addVertex( x, y );
+        float x = input[i] * 0.5;
+        inputFrames[i] = x;
     }
+
+    /* for( size_t i = 0; i < input.getNumFrames(); i++ ) {
+         float sample = input.getSample( i, 0 );
+         float x = ofMap( i, 0, input.getNumFrames(), 0, ofGetWidth() );
+         float y = ofMap( sample, -1, 1, 0, ofGetHeight() );
+         waveform.addVertex( x, y );
+     }*/
 }
 
 void Recorder::setAudioState( AudioRecordingStates state )
@@ -172,9 +208,14 @@ void Recorder::setAudioState( AudioRecordingStates state )
     switch( mAudState ) {
     case AudioRecordingStates::IDLE: {
         resetVisitorPath();
+
         break;
     }
     case AudioRecordingStates::RECORDING: {
+
+        translation = "";
+        sentimentAnalysis = "";
+
         // mVisitorAudioPath = mVisitorPath + "\\audio.mp3";
         mVisitorAudioPath = mVisitorPath + "\\audio.wav";
         mRecorderAud.setAudOutputPath( mVisitorAudioPath );
@@ -214,16 +255,18 @@ void Recorder::translateSpeechToText()
 
     ofLogNotice() << "Audio path: " << audioPath;
 
+    ofLogNotice() << "Transcribition command" <<  batPath + " " + keyPath + " " + audioPath ; 
+
     translation = ofSystem( batPath + " " + keyPath + " " + audioPath );
 
-    translation.erase( remove( translation.begin(), translation.end(), '\n' ), translation.end() ); 
+    translation.erase( remove( translation.begin(), translation.end(), '\n' ), translation.end() );
 
 
     ofLogNotice() << "Speech-to-text Result: " << translation;
 
     // NEED TO DO: save transcription to file
     ofJson text, json;
-    text["text"] = translation; 
+    text["text"] = translation;
     json.push_back( text );
 
     string textFile = mRootPath + mVisitorPath + "\\translation.json";
@@ -235,15 +278,15 @@ void Recorder::performSentimentAnalysis()
 {
     ofLogNotice() << "PERFORM SENTIMENT ANALYSIS";
     string pythonFile = "C:\\Users\\nicol\\Documents\\creative\\projects\\ancient_futures\\code\\AncientFutures\\nlk\\nlk_sentiment.py";
-    string textFile = mRootPath + mVisitorPath + "\\sentiment.json";
+    mVisitorSentimentPath = mRootPath + mVisitorPath + "\\sentiment.json";
     string path = ofSystem( "echo %path%" );
     string cmd = "set PATH=" + path;
     // ofLogNotice() << cmd;
     ofSystem( cmd );
-    cmd = "python " + pythonFile + " " + "\"" + translation + "\"" + " " + "\"" + textFile + "\"";
+    cmd = "python " + pythonFile + " " + "\"" + translation + "\"" + " " + "\"" + mVisitorSentimentPath + "\"";
     ofLogNotice() << cmd;
-    string result = ofSystem( cmd );
-    ofLogNotice() << "Sentiment Analysis Result: " << result;
+    sentimentAnalysis = ofSystem( cmd );
+    ofLogNotice() << "Sentiment Analysis Result: " << sentimentAnalysis;
 
     setAudioState( AudioRecordingStates::IDLE );
 }

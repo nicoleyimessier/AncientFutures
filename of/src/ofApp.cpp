@@ -6,8 +6,8 @@ void ofApp::setup()
     ofSetFrameRate( 30 );
     ofSetVerticalSync( true );
     ofEnableSmoothing();
-    ofSetCircleResolution( 100 );
-    ofBackground( 0 );
+    ofSetCircleResolution( 80 );
+    ofBackground( 70, 45, 74 );
 
     app.setup();
 }
@@ -34,11 +34,11 @@ void ofApp::keyReleased( int key )
 {
     switch( key ) {
     case 'r': {
-        app.setAppState( AppManager::AppStates::RECORDING); 
+        app.setAppState( AppManager::AppStates::RECORDING );
         break;
     }
     case 's': {
-        app.setAppState( AppManager::AppStates::PROCESSING ); 
+        app.setAppState( AppManager::AppStates::PROCESSING );
         break;
     }
     default:

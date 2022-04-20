@@ -17,6 +17,7 @@ void AppManager::setup()
 
     //! setup Arduino
     arduino.setup();
+    arduino.sendStopMsg();
 }
 
 void AppManager::update( float dt )
@@ -27,12 +28,19 @@ void AppManager::update( float dt )
     if( mAppState == AppStates::PROCESSING && recorder.getIsDoneProcessing() ) {
         setAppState( AppStates::ANIMATING );
     }
+    else if( mAppState == AppStates::ANIMATING ) {
+        float elapsedTime = ofGetElapsedTimef() - startAnimationTime;
+
+        if(elapsedTime > animationTime)
+            setAppState( AppStates::STOPPING );
+    }
 }
 
 void AppManager::draw()
 {
-    recorder.drawDebug();
+
     arduino.drawDebug();
+    recorder.drawDebug();
 }
 
 // ---- APP STAETS ---- //
@@ -52,10 +60,38 @@ void AppManager::setAppState( AppStates state )
         break;
     }
     case AppStates::ANIMATING: {
-        arduino.sendSerialMsg();
+        float pos = 0.0f;
+        float neg = 0.0f;
+
+        // open json file
+        if( ofFile::doesFileExist( recorder.getSentimentPath() ) ) {
+            ofLogNotice() << "Found  sentiment analysis " << recorder.getSentimentPath() << ", loading";
+
+            try {
+                ofJson json = ofLoadJson( recorder.getSentimentPath() );
+                // ofLogNotice() << "JSON DUMP: " << json.dump();
+
+                if( !json["neg"].is_null() )
+                    neg = json["neg"];
+
+                if( !json["pos"].is_null() )
+                    pos = json["pos"];
+            }
+            catch( exception &exc ) {
+                ofLogError() << "Unable to load json file";
+            }
+        }
+        else {
+            ofLogError() << "Sentiment file " << recorder.getSentimentPath() << " does not exists!";
+        }
+        arduino.sendSerialMsg( pos, neg );
+
+        startAnimationTime = ofGetElapsedTimef();
         break;
     }
     case AppStates::STOPPING: {
+        arduino.sendStopMsg();
+        setAppState( AppStates::IDLE );
         break;
     }
     default:
