@@ -6,7 +6,7 @@
 
 #define LED_PIN     6
 //#define LED_COUNT  26
-#define LED_COUNT  6
+#define LED_COUNT  16
 #define BRIGHTNESS 255 // Set BRIGHTNESS to about 1/5 (max = 255)
 
 // Declare our NeoPixel strip object:
