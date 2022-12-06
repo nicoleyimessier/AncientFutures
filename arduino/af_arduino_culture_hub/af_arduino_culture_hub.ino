@@ -26,8 +26,6 @@ bool transitionToSentimentAnimation = false;
 bool transitionToAttract = false;
 
 //volume serial
-String volumeInputString = "";      // a String to hold incoming data for volume
-bool volumeStringComplete = false;  // whether the string is complete for volume
 int volume = 0;
 
 //Color storage
@@ -91,18 +89,10 @@ void serialEvent() {
     char inChar = (char)Serial.read();
     // add it to the inputString:
 
-    if (recording) {
-      if (inChar == '\n') {
-        volumeStringComplete = true;
-      } else {
-        volumeInputString += inChar;
-      }
+    if (inChar == '\n') {
+      stringComplete = true;
     } else {
-      if (inChar == '\n') {
-        stringComplete = true;
-      } else {
-        inputString += inChar;
-      }
+      inputString += inChar;
     }
   }
 }
@@ -146,18 +136,23 @@ void processSerialStateData() {
       transitionToAttract = true;
       animate = true;
       //animate = false;
+    } else if (inputString.indexOf('v') >= 0) {
+      //volume = 255;
+      animate = true; 
+      recording = true; 
+
+      String mapping = ""; 
+      for(int i=1; i < inputString.length(); i++)
+      {
+        mapping += inputString[i]; 
+      }
+
+      volume = mapping.toInt(); 
     }
     // clear the string:
     inputString = "";
     stringComplete = false;
-
-    if (volumeStringComplete) {
-      if (recording) {
-        volume = (int)volumeInputString[0];
-      }
-    }
-    volumeInputString = "";
-    volumeStringComplete = true;
+    
   }
 }
 
