@@ -68,7 +68,8 @@ function startRecording() {
       verbose: false,
       recordProgram: 'sox',
       silence: '10.0',
-      device: "Headset (LE_WH-1000XM3)"
+      device: "Microphone (Realtek High Definition Audio)"
+      //device: "Headset (LE_WH-1000XM3)"
     })
   recording
     .stream({verbose: true})
