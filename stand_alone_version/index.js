@@ -14,8 +14,25 @@ const oscServer = new osc.Server(5000, '127.0.0.1', () => {
 });
 
 oscServer.on('message', function (msg) {
-  console.log(`Message: ${msg}`);
-  //oscServer.close();
+  console.log(`Message: `, msg);
+
+  if(msg.length >= 2)
+  {
+    if(msg[0] == "app")
+    {
+      if(msg[1] == "record")
+      {
+        //console.log(`record`);
+        startRecording();
+      }
+      else if(msg[1] == "stopRecording")
+      {
+        //console.log(`stop recording`);
+        stopRecording();
+      }
+    }
+  }
+  
 });
 
 // =========================== GOOGLE CLOUD SETTINGS ================================ //
@@ -49,6 +66,9 @@ let recording = null;
 //Create the stream
 let recognizeStream = null;
 
+// create string to hold final transcript
+let transcript = "";
+
 
 function startRecording() {
   recognizeStream = client
@@ -56,10 +76,15 @@ function startRecording() {
     .on("data", data => {
       const result = data.results[0];
       const isFinal = result.isFinal;
-      oscclient.send('/linkedin/conversation', result.alternatives[0].transcript, isFinal, () => {
-        //console.log("send over osc done");
-      });
+      transcript = result.alternatives[0].transcript;
       console.log(data.results[0].alternatives[0].transcript);
+      
+      if(data.results[0].alternatives[0].confidence > 0)
+      {
+        oscclient.send('/ancient_futures', result.alternatives[0].transcript, isFinal, () => {
+          console.log("send over osc done: ", transcript);
+        });
+      }
     });
   
   recording = recorder.record({
@@ -68,8 +93,7 @@ function startRecording() {
       verbose: false,
       recordProgram: 'sox',
       silence: '10.0',
-      device: "Microphone (Realtek High Definition Audio)"
-      //device: "Headset (LE_WH-1000XM3)"
+      device: "Headset (LE_WH-1000XM3)"
     })
   recording
     .stream({verbose: true})
@@ -78,20 +102,23 @@ function startRecording() {
 }
 
 function stopRecording() {
-  recording.stop();
-  recognizeStream.end();
+
+  if(recording)
+    recording.stop();
+
+  if(recognizeStream)
+    recognizeStream.end();
 
   recording = null;
   recognizeStream = null;
 }
 
-startRecording();
-
-//reset ever n milliseconds - we need to do this beacuase after ( minutes the Google API stops)
 function reset() {
  stopRecording();
- startRecording();
 }
-setInterval(reset, 300000);
+
+//startRecording();
+
+//setInterval(reset, 300000);
 
 console.log('Listening, press Ctrl+C to stop.');
