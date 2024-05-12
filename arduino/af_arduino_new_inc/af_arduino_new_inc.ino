@@ -6,11 +6,11 @@
 
 #define PIN 6
 //#define LED_COUNT  26
-#define LED_COUNT 16
+#define LED_COUNT 304
 #define BRIGHTNESS 255  // Set BRIGHTNESS to about 1/5 (max = 255)
 
 // Declare our NeoPixel strip object:
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(60, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(LED_COUNT, PIN, NEO_GRB + NEO_KHZ800);
 
 
 // Serial
