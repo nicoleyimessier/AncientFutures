@@ -6,7 +6,7 @@ call venv\Scripts\activate
 
 call set CO_API_KEY=%1
 
-python src/claude_instructor_test/__init__.py %2
+python src/claude_instructor_test/__init__.py --secret %2 --output-file %3
 
 call venv\Scripts\deactivate
 
