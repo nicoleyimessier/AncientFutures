@@ -6,7 +6,8 @@
 #define PIN 6
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(16, PIN, NEO_GRB + NEO_KHZ800);
 
-
+// Array to hold RGB values
+int rgb[6];
 String inputString = "";      // a String to hold incoming data
 bool stringComplete = false;  // whether the string is complete
 
@@ -28,40 +29,11 @@ void loop() {
   if (stringComplete) {
     Serial.println(inputString);
     // Convert the inputString to a character array
-    char str[inputString.length() + 1];
-    inputString.toCharArray(str, inputString.length() + 1);
-
-    // Array to hold RGB values
-    int rgb[3];
-
-    // Pointer to the tokens
-    char *token;
-
-    // Get the first token
-    token = strtok(str, ",");
-
-    // Index to keep track of the position in the rgb array
-    int index = 0;
-
-    // Loop through the tokens
-    while (token != NULL) {
-      // Convert token to an integer and store it in the rgb array
-      rgb[index] = atoi(token);
-
-      // Print each RGB value for debugging
-      Serial.print("RGB[");
-      Serial.print(index);
-      Serial.print("] = ");
-      Serial.println(rgb[index]);
-
-      // Get the next token
-      token = strtok(NULL, ",");
-
-      // Increment the index
-      index++;
-    }
+    
+    parseRGBValues(inputString, rgb);
 
     colorWipe(strip.Color(rgb[0], rgb[1], rgb[2]), 50);
+    colorWipe(strip.Color(rgb[3], rgb[4], rgb[5]), 50);
 
     // clear the string:
     inputString = "";
@@ -88,6 +60,18 @@ void serialEvent() {
   }
 }
 
+void parseRGBValues(const String& inputString, int rgb[6]) {
+  // Convert the inputString to a character array
+  char str[inputString.length() + 1];
+  inputString.toCharArray(str, inputString.length() + 1);
+
+  char *token = strtok(str, ",");  // Get the first token
+
+  for (int index = 0; token != NULL && index < 6; ++index) {
+    rgb[index] = atoi(token);  // Convert token to an integer and store it in the rgb array
+    token = strtok(NULL, ","); // Get the next token
+  }
+}
 // Fill the dots one after the other with a color
 void colorWipe(uint32_t c, uint8_t wait) {
   for (uint16_t i = 0; i < strip.numPixels(); i++) {

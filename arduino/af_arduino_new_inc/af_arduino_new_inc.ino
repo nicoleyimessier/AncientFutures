@@ -1,254 +1,186 @@
-
 #include <Adafruit_NeoPixel.h>
 #ifdef __AVR__
 #include <avr/power.h>  // Required for 16 MHz Adafruit Trinket
 #endif
 
 #define PIN 6
-//#define LED_COUNT  26
-#define LED_COUNT 304
-#define BRIGHTNESS 255  // Set BRIGHTNESS to about 1/5 (max = 255)
+#define LED_COUNT 16
+#define BRIGHTNESS 50  // Set BRIGHTNESS to about 1/5 (max = 255)
 
-// Declare our NeoPixel strip object:
+// Declare our NeoPixel strip object
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(LED_COUNT, PIN, NEO_GRB + NEO_KHZ800);
-
 
 // Serial
 String inputString = "";      // a String to hold incoming data
 bool stringComplete = false;  // whether the string is complete
-bool animatePositive = false;
-bool animateNegative = false;
-bool animateNetrual = false;
-bool recordingCountdown = false;
-bool recording = false;
-bool analyzing = false;
-bool animate = false;
-bool transitionToSentimentAnimation = false;
-bool transitionToAttract = false;
 
-//volume serial
+// Volume serial
 int volume = 0;
 
-//Color storage
+// Color storage
 uint8_t start_r = 0;
 uint8_t start_g = 0;
 uint8_t start_b = 0;
+int rgb[6];
+
+enum AnimationState {
+  IDLE,
+  RECORDING_COUNTDOWN,
+  RECORDING,
+  ANALYZING,
+  TRANSITION_TO_SENTIMENT,
+  ANIMATING,
+  TRANSITION_TO_ATTRACT
+};
+
+AnimationState currentState = IDLE;
 
 void setup() {
   Serial.begin(9600);
+    inputString.reserve(200);
+
   strip.begin();  // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.show();   // Turn OFF all pixels ASAP
   strip.setBrightness(BRIGHTNESS);
-  inputString.reserve(200);
   pinMode(LED_BUILTIN, OUTPUT);
 }
 
 void loop() {
   processSerialStateData();
 
-  if (animate) {
-    if (recordingCountdown) {
+  switch (currentState) {
+    case RECORDING_COUNTDOWN:
       animate_gradient_fill(start_r, start_g, start_b, 0, 0, 0, 3000);
-      recording = true;
-      recordingCountdown = false;
-    } else if (recording) {
-      //strip.fill(strip.Color(0, 0, 0));
-      //strip.show();
+      currentState = RECORDING;
+      break;
+    case RECORDING:
       strip.fill(strip.Color(volume, volume, volume));
       strip.show();
-    } else if (analyzing)
+      break;
+    case ANALYZING:
       theaterChase(strip.Color(255, 255, 255), 500);
-    else if (transitionToSentimentAnimation) {
+      break;
+    case TRANSITION_TO_SENTIMENT:
       animate_gradient_fill(start_r, start_g, start_b, 255, 255, 255, 1000);
-      transitionToSentimentAnimation = false;
-    } else if (animatePositive)
-      pulseBlue(2000);
-    else if (animateNegative)
-      pulseRed(2000);
-    else if (animateNetrual)
-      pulseNeutral(2000);
-    else if (transitionToAttract) {
+      currentState = IDLE;
+      break;
+    case ANIMATING:
+      pulseBetweenColors(rgb[0], rgb[1], rgb[2], rgb[3], rgb[4], rgb[5], 2000);
+      break;
+    case TRANSITION_TO_ATTRACT:
       animate_gradient_fill(start_r, start_g, start_b, 255, 95, 50, 1000);
-      animate = false;
-      transitionToAttract = false;
-    }
-  } else {
-    animate_gradient_fill(255, 95, 50, 255, 255, 255, 3000);
-    animate_gradient_fill(255, 255, 255, 255, 95, 50, 3000);
+      currentState = IDLE;
+      break;
+    case IDLE:
+    default:
+      pulseBetweenColors(255, 95, 50, 255, 255, 255, 3000);
+      break;
   }
 }
 
-
-/*
-  SerialEvent occurs whenever a new data comes in the hardware serial RX. This
-  routine is run between each time loop() runs, so using delay inside loop can
-  delay response. Multiple bytes of data may be available.
-*/
+// SerialEvent occurs whenever a new data comes in the hardware serial RX.
 void serialEvent() {
   while (Serial.available()) {
     // get the new byte:
     char inChar = (char)Serial.read();
     // add it to the inputString:
-
+    inputString += inChar;
+    // if the incoming character is a newline, set a flag so the main loop can
+    // do something about it:
     if (inChar == '\n') {
       stringComplete = true;
-    } else {
-      inputString += inChar;
     }
   }
 }
 
-
-
 void processSerialStateData() {
-  // print the string when a newline arrives:
   if (stringComplete) {
     Serial.print(inputString);
 
-    // RESET ALL VALUES
-    animatePositive = false;
-    animateNegative = false;
-    animateNetrual = false;
-    recordingCountdown = false;
-    recording = false;
-    analyzing = false;
-    transitionToSentimentAnimation = false;
-    transitionToAttract = false;
 
-    if (inputString.indexOf('p') >= 0) {
-      transitionToSentimentAnimation = true;
-      animatePositive = true;
-      animate = true;
-    } else if (inputString.indexOf('n') >= 0) {
-      transitionToSentimentAnimation = true;
-      animateNegative = true;
-      animate = true;
-    } else if (inputString.indexOf('c') >= 0) {
-      transitionToSentimentAnimation = true;
-      animateNetrual = true;
-      animate = true;
-    } else if (inputString.indexOf('a') >= 0) {
-      analyzing = true;
-      animate = true;
+    if (inputString.indexOf('a') >= 0) {
+      currentState = ANALYZING;
     } else if (inputString.indexOf('r') >= 0) {
-      recordingCountdown = true;
-      animate = true;
+      currentState = RECORDING_COUNTDOWN;
     } else if (inputString.indexOf('s') >= 0) {
-      transitionToAttract = true;
-      animate = true;
-      //animate = false;
+      currentState = TRANSITION_TO_ATTRACT;
     } else if (inputString.indexOf('v') >= 0) {
-      //volume = 255;
-      animate = true; 
-      recording = true; 
-
-      String mapping = ""; 
-      for(int i=1; i < inputString.length(); i++)
-      {
-        mapping += inputString[i]; 
-      }
-
-      volume = mapping.toInt(); 
+      String mapping = inputString.substring(1);
+      volume = mapping.toInt();
+      currentState = RECORDING;
+    } else {
+      parseRGBValues(inputString, rgb);
+      currentState = ANIMATING;
     }
-    // clear the string:
+    
+
     inputString = "";
     stringComplete = false;
-    
   }
 }
 
-void pulseRed(int duration) {
-  animate_gradient_fill(255, 255, 255, 255, 0, 0, duration);
-  animate_gradient_fill(255, 0, 0, 255, 255, 255, duration);
+
+void parseRGBValues(const String& inputString, int rgb[6]) {
+  // Convert the inputString to a character array
+  char str[inputString.length() + 1];
+  inputString.toCharArray(str, inputString.length() + 1);
+
+  char* token = strtok(str, ",");  // Get the first token
+
+  for (int index = 0; token != NULL && index < 6; ++index) {
+    rgb[index] = atoi(token);   // Convert token to an integer and store it in the rgb array
+    token = strtok(NULL, ",");  // Get the next token
+  }
+}
+
+void pulseBetweenColors(uint8_t start_r, uint8_t start_g, uint8_t start_b,
+                        uint8_t end_r, uint8_t end_g, uint8_t end_b,
+                        int duration) {
+  animate_gradient_fill(start_r, start_g, start_b, end_r, end_g, end_b, duration);
+  animate_gradient_fill(end_r, end_g, end_b, start_r, start_g, start_b, duration);
 }
 
 
-void pulseBlue(int duration) {
-  animate_gradient_fill(255, 255, 255, 0, 0, 255, duration);
-  animate_gradient_fill(0, 0, 255, 255, 255, 255, duration);
-}
-
-void pulseNeutral(int duration) {
-  animate_gradient_fill(255, 255, 255, 255, 95, 50, duration);
-  animate_gradient_fill(255, 95, 50, 255, 255, 255, duration);
-}
-
-void storeColorMix(uint8_t r,
-                   uint8_t g,
-                   uint8_t b) {
+void storeColorMix(uint8_t r, uint8_t g, uint8_t b) {
   start_r = r;
   start_g = g;
   start_b = b;
 }
 
-
-// Theater-marquee-style chasing lights. Pass in a color (32-bit value,
-// a la strip.Color(r,g,b) as mentioned above), and a delay time (in ms)
-// between frames.
 void theaterChase(uint32_t color, int wait) {
-  for (int a = 0; a < 10; a++) {   // Repeat 10 times...
-    for (int b = 0; b < 3; b++) {  //  'b' counts from 0 to 2...
-      strip.clear();               //   Set all pixels in RAM to 0 (off)
-      // 'c' counts up from 'b' to end of strip in steps of 3...
+  for (int a = 0; a < 10; a++) {
+    for (int b = 0; b < 3; b++) {
+      strip.clear();
       for (int c = b; c < strip.numPixels(); c += 3) {
-        strip.setPixelColor(c, color);  // Set pixel 'c' to value 'color'
+        strip.setPixelColor(c, color);
       }
-      strip.show();  // Update strip with new contents
-
+      strip.show();
       serialEvent();
-      if (stringComplete) {
-        return;
-      }
-
-      delay(wait);  // Pause for a moment
+      if (stringComplete) return;
+      delay(wait);
     }
   }
 }
 
-
-// ANIMATIONS//Linaer interpolate
-void animate_gradient_fill(
-  uint8_t start_r,
-  uint8_t start_g,
-  uint8_t start_b,
-  uint8_t end_r,
-  uint8_t end_g,
-  uint8_t end_b,
-  int duration_ms) {
-
+void animate_gradient_fill(uint8_t start_r, uint8_t start_g, uint8_t start_b, uint8_t end_r, uint8_t end_g, uint8_t end_b, int duration_ms) {
   unsigned long start = millis();
-  // start color
   strip.fill(strip.Color(start_r, start_g, start_b));
   strip.show();
-
-  // start time
   unsigned long delta = millis() - start;
-
-  // animation loop
   while (delta < duration_ms) {
     serialEvent();
-    if (stringComplete) {
-      return;
-    }
+    if (stringComplete) return;
     float pos = (float)delta / (float)duration_ms;
     uint32_t color = color_gradient(start_r, start_g, start_b, end_r, end_g, end_b, pos);
     strip.fill(color);
     strip.show();
     delta = millis() - start;
   }
-
-  //end color
   strip.fill(strip.Color(end_r, end_g, end_b));
   strip.show();
 }
 
-uint32_t color_gradient(uint8_t start_r,
-                        uint8_t start_g,
-                        uint8_t start_b,
-                        uint8_t end_r,
-                        uint8_t end_g,
-                        uint8_t end_b,
-                        float pos) {
+uint32_t color_gradient(uint8_t start_r, uint8_t start_g, uint8_t start_b, uint8_t end_r, uint8_t end_g, uint8_t end_b, float pos) {
   uint8_t red = (uint8_t)lerp(pos, 0.0, 1.0, start_r, end_r);
   uint8_t green = (uint8_t)lerp(pos, 0.0, 1.0, start_g, end_g);
   uint8_t blue = (uint8_t)lerp(pos, 0.0, 1.0, start_b, end_b);
@@ -260,4 +192,14 @@ float lerp(float x, float x0, float x1, float y0, float y1) {
   x = x > x1 ? x1 : x;
   x = x < x0 ? x0 : x;
   return y0 + (y1 - y0) * ((x - x0) / (x1 - x0));
+}
+
+
+// Fill the dots one after the other with a color
+void colorWipe(uint32_t c, uint8_t wait) {
+  for (uint16_t i = 0; i < strip.numPixels(); i++) {
+    strip.setPixelColor(i, c);
+    strip.show();
+    delay(wait);
+  }
 }
