@@ -21,7 +21,8 @@ int volume = 0;
 uint8_t start_r = 0;
 uint8_t start_g = 0;
 uint8_t start_b = 0;
-int rgb[6];
+bool onTransition = false;
+int rgb[6] = { 0, 0, 0, 0, 0, 0 };
 
 enum AnimationState {
   IDLE,
@@ -37,7 +38,7 @@ AnimationState currentState = IDLE;
 
 void setup() {
   Serial.begin(9600);
-    inputString.reserve(200);
+  inputString.reserve(200);
 
   strip.begin();  // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.show();   // Turn OFF all pixels ASAP
@@ -65,6 +66,12 @@ void loop() {
       currentState = IDLE;
       break;
     case ANIMATING:
+      if (onTransition) {
+        convertColorToRGB(strip.getPixelColor(0));
+        animate_gradient_fill(start_r, start_g, start_b, rgb[0], rgb[1], rgb[2], 1000);
+        onTransition = false;
+      }
+
       pulseBetweenColors(rgb[0], rgb[1], rgb[2], rgb[3], rgb[4], rgb[5], 2000);
       break;
     case TRANSITION_TO_ATTRACT:
@@ -78,15 +85,11 @@ void loop() {
   }
 }
 
-// SerialEvent occurs whenever a new data comes in the hardware serial RX.
+// SerialEvent occurs whenever new data comes in the hardware serial RX.
 void serialEvent() {
   while (Serial.available()) {
-    // get the new byte:
     char inChar = (char)Serial.read();
-    // add it to the inputString:
     inputString += inChar;
-    // if the incoming character is a newline, set a flag so the main loop can
-    // do something about it:
     if (inChar == '\n') {
       stringComplete = true;
     }
@@ -96,7 +99,6 @@ void serialEvent() {
 void processSerialStateData() {
   if (stringComplete) {
     Serial.print(inputString);
-
 
     if (inputString.indexOf('a') >= 0) {
       currentState = ANALYZING;
@@ -110,26 +112,29 @@ void processSerialStateData() {
       currentState = RECORDING;
     } else {
       parseRGBValues(inputString, rgb);
+      onTransition = true;
       currentState = ANIMATING;
     }
-    
 
     inputString = "";
     stringComplete = false;
   }
 }
 
-
 void parseRGBValues(const String& inputString, int rgb[6]) {
-  // Convert the inputString to a character array
   char str[inputString.length() + 1];
   inputString.toCharArray(str, inputString.length() + 1);
 
-  char* token = strtok(str, ",");  // Get the first token
-
+  char* token = strtok(str, ",");
   for (int index = 0; token != NULL && index < 6; ++index) {
-    rgb[index] = atoi(token);   // Convert token to an integer and store it in the rgb array
-    token = strtok(NULL, ",");  // Get the next token
+    rgb[index] = atoi(token);
+    token = strtok(NULL, ",");
+  }
+
+  // Ensure all values are in the 0-255 range
+  for (int i = 0; i < 6; i++) {
+    if (rgb[i] < 0) rgb[i] = 0;
+    if (rgb[i] > 255) rgb[i] = 255;
   }
 }
 
@@ -140,11 +145,16 @@ void pulseBetweenColors(uint8_t start_r, uint8_t start_g, uint8_t start_b,
   animate_gradient_fill(end_r, end_g, end_b, start_r, start_g, start_b, duration);
 }
 
-
 void storeColorMix(uint8_t r, uint8_t g, uint8_t b) {
   start_r = r;
   start_g = g;
   start_b = b;
+}
+
+void convertColorToRGB(uint32_t color) {
+  start_r = (color >> 16) & 0xFF;
+  start_g = (color >> 8) & 0xFF;
+  start_b = color & 0xFF;
 }
 
 void theaterChase(uint32_t color, int wait) {
@@ -155,14 +165,19 @@ void theaterChase(uint32_t color, int wait) {
         strip.setPixelColor(c, color);
       }
       strip.show();
+
+
       serialEvent();
+
       if (stringComplete) return;
       delay(wait);
     }
   }
 }
 
-void animate_gradient_fill(uint8_t start_r, uint8_t start_g, uint8_t start_b, uint8_t end_r, uint8_t end_g, uint8_t end_b, int duration_ms) {
+void animate_gradient_fill(uint8_t start_r, uint8_t start_g, uint8_t start_b,
+                           uint8_t end_r, uint8_t end_g, uint8_t end_b,
+                           int duration_ms) {
   unsigned long start = millis();
   strip.fill(strip.Color(start_r, start_g, start_b));
   strip.show();
@@ -180,7 +195,9 @@ void animate_gradient_fill(uint8_t start_r, uint8_t start_g, uint8_t start_b, ui
   strip.show();
 }
 
-uint32_t color_gradient(uint8_t start_r, uint8_t start_g, uint8_t start_b, uint8_t end_r, uint8_t end_g, uint8_t end_b, float pos) {
+uint32_t color_gradient(uint8_t start_r, uint8_t start_g, uint8_t start_b,
+                        uint8_t end_r, uint8_t end_g, uint8_t end_b,
+                        float pos) {
   uint8_t red = (uint8_t)lerp(pos, 0.0, 1.0, start_r, end_r);
   uint8_t green = (uint8_t)lerp(pos, 0.0, 1.0, start_g, end_g);
   uint8_t blue = (uint8_t)lerp(pos, 0.0, 1.0, start_b, end_b);
@@ -193,7 +210,6 @@ float lerp(float x, float x0, float x1, float y0, float y1) {
   x = x < x0 ? x0 : x;
   return y0 + (y1 - y0) * ((x - x0) / (x1 - x0));
 }
-
 
 // Fill the dots one after the other with a color
 void colorWipe(uint32_t c, uint8_t wait) {
