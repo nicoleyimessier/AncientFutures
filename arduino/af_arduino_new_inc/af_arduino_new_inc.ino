@@ -4,11 +4,15 @@
 #endif
 
 #define PIN 6
-#define LED_COUNT 16
-#define BRIGHTNESS 50  // Set BRIGHTNESS to about 1/5 (max = 255)
+#define LEDS_PER_RING 16  // Number of LEDs in each ring
+#define NUM_RINGS 2       // Total number of rings
+#define BRIGHTNESS 50     // Set BRIGHTNESS to about 1/5 (max = 255)
+
+// Calculate the total number of LEDs
+#define TOTAL_LED_COUNT (LEDS_PER_RING * NUM_RINGS)
 
 // Declare our NeoPixel strip object
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(LED_COUNT, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(TOTAL_LED_COUNT, PIN, NEO_GRB + NEO_KHZ800);
 
 // Serial
 String inputString = "";      // a String to hold incoming data
@@ -31,6 +35,9 @@ enum AnimationState {
   ANALYZING,
   TRANSITION_TO_SENTIMENT,
   ANIMATING,
+  SINGLE_LED,
+  TWO_LED,
+  SINGLE_COLOR,
   TRANSITION_TO_ATTRACT
 };
 
@@ -79,6 +86,17 @@ void loop() {
       currentState = IDLE;
       break;
     case IDLE:
+      pulseBetweenColors(255, 95, 50, 255, 255, 255, 3000);
+      break;
+    case SINGLE_LED:
+      turnOnNLedOfEachRing(1);
+      break;
+    case TWO_LED:
+      turnOnNLedOfEachRing(2);
+      break;
+    case SINGLE_COLOR:
+      colorWipe(strip.Color(rgb[1], rgb[2],rgb[3]), 50);
+      break;
     default:
       pulseBetweenColors(255, 95, 50, 255, 255, 255, 3000);
       break;
@@ -100,7 +118,11 @@ void processSerialStateData() {
   if (stringComplete) {
     Serial.print(inputString);
 
-    if (inputString.indexOf('a') >= 0) {
+    if (inputString.indexOf('z') >= 0) {
+      currentState = SINGLE_LED;
+    } else if (inputString.indexOf('y') >= 0) {
+      currentState = TWO_LED;
+    } else if (inputString.indexOf('a') >= 0) {
       currentState = ANALYZING;
     } else if (inputString.indexOf('r') >= 0) {
       currentState = RECORDING_COUNTDOWN;
@@ -110,7 +132,11 @@ void processSerialStateData() {
       String mapping = inputString.substring(1);
       volume = mapping.toInt();
       currentState = RECORDING;
-    } else {
+    }else if (inputString.indexOf('c') >= 0){
+      parseRGBValuesSingleColor(inputString, rgb);
+      currentState = SINGLE_COLOR;
+    } 
+    else {
       parseRGBValues(inputString, rgb);
       onTransition = true;
       currentState = ANIMATING;
@@ -118,6 +144,23 @@ void processSerialStateData() {
 
     inputString = "";
     stringComplete = false;
+  }
+}
+
+void parseRGBValuesSingleColor(const String& inputString, int rgb[6]) {
+  char str[inputString.length() + 1];
+  inputString.toCharArray(str, inputString.length() + 1);
+
+  char* token = strtok(str, ",");
+  for (int index = 0; token != NULL && index < 6; ++index) {
+    rgb[index] = atoi(token);
+    token = strtok(NULL, ",");
+  }
+
+  // Ensure all values are in the 0-255 range
+  for (int i = 0; i < 6; i++) {
+    if (rgb[i] < 0) rgb[i] = 0;
+    if (rgb[i] > 255) rgb[i] = 255;
   }
 }
 
@@ -218,4 +261,21 @@ void colorWipe(uint32_t c, uint8_t wait) {
     strip.show();
     delay(wait);
   }
+}
+
+void turnOnNLedOfEachRing(int numLEDs) {
+  // Define the color (e.g., red)
+  uint32_t color = strip.Color(255, 0, 0);
+
+  strip.fill(strip.Color(0, 0, 0));
+  strip.show();
+
+  // Loop through each ring and turn on the first LED
+  for (int i = 0; i < NUM_RINGS; i++) {
+    for (int j = 0; j < numLEDs; j++)
+      strip.setPixelColor(i * LEDS_PER_RING + j, color);
+  }
+
+  // Show the changes on the strip
+  strip.show();
 }
