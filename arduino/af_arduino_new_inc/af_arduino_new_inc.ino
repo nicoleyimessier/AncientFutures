@@ -5,8 +5,8 @@
 
 #define PIN 6
 #define LEDS_PER_RING 16  // Number of LEDs in each ring
-#define NUM_RINGS 2       // Total number of rings
-#define BRIGHTNESS 50     // Set BRIGHTNESS to about 1/5 (max = 255)
+#define NUM_RINGS 18       // Total number of rings
+#define BRIGHTNESS 255     // Set BRIGHTNESS to about 1/5 (max = 255)
 
 // Calculate the total number of LEDs
 #define TOTAL_LED_COUNT (LEDS_PER_RING * NUM_RINGS)
