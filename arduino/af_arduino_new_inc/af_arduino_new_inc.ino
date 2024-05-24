@@ -5,8 +5,8 @@
 
 #define PIN 6
 #define LEDS_PER_RING 16  // Number of LEDs in each ring
-#define NUM_RINGS 18       // Total number of rings
-#define BRIGHTNESS 255     // Set BRIGHTNESS to about 1/5 (max = 255)
+#define NUM_RINGS 2       // Total number of rings
+#define BRIGHTNESS 255    // Set BRIGHTNESS to about 1/5 (max = 255)
 
 // Calculate the total number of LEDs
 #define TOTAL_LED_COUNT (LEDS_PER_RING * NUM_RINGS)
@@ -38,6 +38,8 @@ enum AnimationState {
   SINGLE_LED,
   TWO_LED,
   SINGLE_COLOR,
+  SINGLE_COLOR_TO_GRADIENT,
+  NO_ANIMATION,
   TRANSITION_TO_ATTRACT
 };
 
@@ -95,7 +97,18 @@ void loop() {
       turnOnNLedOfEachRing(2);
       break;
     case SINGLE_COLOR:
-      colorWipe(strip.Color(rgb[1], rgb[2],rgb[3]), 50);
+      strip.fill(strip.Color(0, 0, 0));
+      strip.show();
+      colorWipe(strip.Color(rgb[0], rgb[1], rgb[2]), 50);
+      currentState = NO_ANIMATION;
+      break;
+    case SINGLE_COLOR_TO_GRADIENT:
+      strip.fill(strip.Color(0, 0, 0));
+      strip.show();
+      colorWipe(strip.Color(rgb[0], rgb[1], rgb[2]), 50);
+      currentState = ANIMATING;
+      break;
+    case NO_ANIMATION:
       break;
     default:
       pulseBetweenColors(255, 95, 50, 255, 255, 255, 3000);
@@ -132,11 +145,13 @@ void processSerialStateData() {
       String mapping = inputString.substring(1);
       volume = mapping.toInt();
       currentState = RECORDING;
-    }else if (inputString.indexOf('c') >= 0){
+    } else if (inputString.indexOf('c') >= 0) {
       parseRGBValuesSingleColor(inputString, rgb);
       currentState = SINGLE_COLOR;
-    } 
-    else {
+    } else if (inputString.indexOf('g') >= 0) {
+      parseRGBValuesSingleColor(inputString, rgb);
+      currentState = SINGLE_COLOR_TO_GRADIENT;
+    } else {
       parseRGBValues(inputString, rgb);
       onTransition = true;
       currentState = ANIMATING;
