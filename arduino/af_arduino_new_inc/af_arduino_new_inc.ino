@@ -60,12 +60,12 @@ void loop() {
 
   switch (currentState) {
     case RECORDING_COUNTDOWN:
-      animate_gradient_fill(start_r, start_g, start_b, 0, 0, 0, 3000);
+      animate_gradient_fill(start_r, start_g, start_b, 10, 10, 10, 3000);
       currentState = RECORDING;
       break;
     case RECORDING:
-      strip.fill(strip.Color(volume, volume, volume));
-      strip.show();
+      //strip.fill(strip.Color(volume, volume, volume));
+      //strip.show();
       break;
     case ANALYZING:
       theaterChase(strip.Color(255, 255, 255), 500);
