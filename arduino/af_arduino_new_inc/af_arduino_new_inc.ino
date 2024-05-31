@@ -5,7 +5,7 @@
 
 #define PIN 6
 #define LEDS_PER_RING 16  // Number of LEDs in each ring
-#define NUM_RINGS 2       // Total number of rings
+#define NUM_RINGS 18       // Total number of rings
 #define BRIGHTNESS 255    // Set BRIGHTNESS to about 1/5 (max = 255)
 
 // Calculate the total number of LEDs
@@ -105,7 +105,7 @@ void loop() {
     case SINGLE_COLOR_TO_GRADIENT:
       strip.fill(strip.Color(0, 0, 0));
       strip.show();
-      colorWipe(strip.Color(rgb[0], rgb[1], rgb[2]), 50);
+      colorWipeBothRows(strip.Color(rgb[0], rgb[1], rgb[2]), 30);
       currentState = ANIMATING;
       break;
     case NO_ANIMATION:
@@ -277,6 +277,18 @@ void colorWipe(uint32_t c, uint8_t wait) {
     delay(wait);
   }
 }
+
+// Fill the dots one after the other with a color
+void colorWipeBothRows(uint32_t c, uint8_t wait) {
+
+  for (uint16_t i = 0; i < strip.numPixels()/2; i++) {
+    strip.setPixelColor(i, c);
+    strip.setPixelColor(strip.numPixels()-i, c);
+    strip.show();
+    delay(wait);
+  }
+}
+
 
 void turnOnNLedOfEachRing(int numLEDs) {
   // Define the color (e.g., red)
