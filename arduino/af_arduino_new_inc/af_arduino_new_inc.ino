@@ -2,6 +2,7 @@
 #include <Adafruit_NeoPixel.h>
 #ifdef __AVR__
 #include <avr/power.h>  // Required for 16 MHz Adafruit Trinket
+#include <avr/wdt.h>
 #endif
 
 #define PIN 6
@@ -41,6 +42,7 @@ void setup() {
   strip.setBrightness(BRIGHTNESS);
   inputString.reserve(200);
   pinMode(LED_BUILTIN, OUTPUT);
+  wdt_enable(WDTO_8S);
 }
 
 void loop() {
@@ -76,6 +78,7 @@ void loop() {
     animate_gradient_fill(255, 95, 50, 255, 255, 255, 3000);
     animate_gradient_fill(255, 255, 255, 255, 95, 50, 3000);
   }
+  wdt_reset();
 }
 
 
@@ -226,6 +229,7 @@ void animate_gradient_fill(
 
   // animation loop
   while (delta < duration_ms) {
+    wdt_reset();
     serialEvent();
     if (stringComplete) {
       return;
